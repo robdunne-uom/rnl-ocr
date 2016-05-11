@@ -18,46 +18,58 @@ import pytesseract
 from PIL import Image
 import csv
 import string
+from multiprocessing.dummy import Pool as ThreadPool
 
 class RNLOCR():
-	'Main class for reading the label data in images'
+	'Main class for reading the label data in images'	
 
 	# Constructor
 	def __init__(self):
+		self.path = '../images/'
+		self.dataFile = '../data/data.csv'
+		
+		self.cleanUp()
 		self.scanImages()
+	
+	def cleanUp(self):
+		# Delete previous copy of the data
+		try:
+			os.remove(self.dataFile)
+			open(self.dataFile, 'r+')
+		except OSError:
+			pass
 	
 	def scanImages(self):
 		# Loop through the files in the images folder	
-		path = '../images/'
-		dataFile = '../data/data.csv'
-		
-		with open(dataFile, 'w+', newline='') as fp:
-			for img in os.listdir(path):
-				if os.path.isfile(path+img):
-					'''
-						TO DO: Needs to be multithreaded
-					'''
-					self.processImage(path, img, fp)
+		pool = ThreadPool(8)
+		results = pool.map(self.processImage, os.listdir(self.path))
+		pool.close()
+		pool.join()
 	
-	def processImage(self, path, img, fp):
+	def processImage(self, img):
 		print('Processing {}...'.format(img))
 		#print(pytesseract.image_to_string(Image.open(path+img)))
+		
+		'''
+			TO DO: Would altering the contrast of the image improve results?	
+		'''
+		
+		with open(self.dataFile, 'a', newline='') as fp:		
+			imgData = pytesseract.image_to_string(Image.open(self.path+img))
+			imgData = [s.strip() for s in imgData.splitlines()]
 	
-		imgData = pytesseract.image_to_string(Image.open(path+img))
-		imgData = [s.strip() for s in imgData.splitlines()]
+			# Try to validate the text
+			imgData = self.validateText(imgData)
 	
-		# Try to validate the text
-		imgData = self.validateText(imgData)
+			# Prepend the image name to the data list
+			imgData.insert(0, img)
 	
-		# Prepend the image name to the data list
-		imgData.insert(0, img)
-	
-		# Write the data to the CSV file
-		a = csv.writer(fp, delimiter=',')
-		a.writerows([imgData])
+			# Write the data to the CSV file
+			a = csv.writer(fp, delimiter=',')
+			a.writerows([imgData])
 		
 	def validateText(self, imgData):
-		# TO DO: Check that the output seems reasonable, and not garbage
+		# TO DO: Check that the output seems reasonable, and not garbage. Normalise where possible.
 		# Some help here: https://github.com/tesseract-ocr/tesseract/wiki/ImproveQuality#dictionaries-word-lists-and-patterns
 		id = []
 		
@@ -66,6 +78,7 @@ class RNLOCR():
 			# Validate
 			entry = self.removeNonASCII(entry)
 			entry = self.filterPunctuation(entry)
+			entry = self.trimSpaces(entry)
 			
 			id.append(entry)
 			
@@ -84,7 +97,10 @@ class RNLOCR():
 		return ''.join([i if ord(i) < 128 else ' ' for i in text])
 	
 	def filterPunctuation(self, text):
-		return text.translate({ord(i):None for i in "()/\\\"'!@£$%^&*#{}[]?<>~`=-_+±§€"})
+		return text.translate({ord(i):None for i in "()/\\\"'!@£$%^&*#{}[]?<>~`=-_+±§€.,"})
 
+	def trimSpaces(self, text):
+		return text.strip()
+	
 
 RNLOCR()
