@@ -10,13 +10,14 @@ Prerequisites:
 		- sudo pip install pillow
 		- sudo pip install pytesseract
 		- brew install tesseract
-
+	
 '''
 
 import os
 import pytesseract
 from PIL import Image
 import csv
+import string
 
 class RNLOCR():
 	'Main class for reading the label data in images'
@@ -33,23 +34,44 @@ class RNLOCR():
 		with open(dataFile, 'w+', newline='') as fp:
 			for img in os.listdir(path):
 				if os.path.isfile(path+img):
-					print('Processing {}...'.format(img))
-					#print(pytesseract.image_to_string(Image.open(path+img)))
-					
-					imgData = pytesseract.image_to_string(Image.open(path+img))
-					imgData = imgData.split('\n', 1)
-					imgData.insert(0, img)
-					
-					a = csv.writer(fp, delimiter=',');
-					data = [imgData];
-					a.writerows(data);
+					'''
+						TO DO: Needs to be multithreaded
+					'''
+					self.processImage(path, img, fp)
+	
+	def processImage(self, path, img, fp):
+		print('Processing {}...'.format(img))
+		#print(pytesseract.image_to_string(Image.open(path+img)))
+	
+		imgData = pytesseract.image_to_string(Image.open(path+img))
+		imgData = [s.strip() for s in imgData.splitlines()]
+	
+		# Try to validate the text
+		imgData = self.validateText(imgData)
+	
+		# Prepend the image name to the data list
+		imgData.insert(0, img)
+	
+		# Write the data to the CSV file
+		a = csv.writer(fp, delimiter=',')
+		a.writerows([imgData])
 		
-	def validateText(self):
+	def validateText(self, imgData):
 		# TO DO: Check that the output seems reasonable, and not garbage
 		# Some help here: https://github.com/tesseract-ocr/tesseract/wiki/ImproveQuality#dictionaries-word-lists-and-patterns
+		id = []
 		
-		pass
-	
+		# Loop through the list
+		for entry in imgData:
+			# Validate
+			entry = self.removeNonASCII(entry)
+			entry = self.filterPunctuation(entry)
+			
+			id.append(entry)
+			
+		# Return the updated list
+		return id
+		
 	def categoriseText(self):
 		# Check the text against expected word lists - species, genus, location etc
 		
@@ -57,5 +79,12 @@ class RNLOCR():
 		# http://streamhacker.com/2011/10/31/fuzzy-string-matching-python/
 		
 		pass
+	
+	def removeNonASCII(self, text):
+		return ''.join([i if ord(i) < 128 else ' ' for i in text])
+	
+	def filterPunctuation(self, text):
+		return text.translate({ord(i):None for i in "()/\\\"'!@£$%^&*#{}[]?<>~`=-_+±§€"})
+
 
 RNLOCR()

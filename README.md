@@ -12,6 +12,8 @@ Prerequisites:
 		- sudo pip install pytesseract
 		- brew install tesseract
 		
+	- Unidecode: pip install unidecode
+
 To run: 
 
 <pre>
