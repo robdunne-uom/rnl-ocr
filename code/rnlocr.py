@@ -54,19 +54,20 @@ class RNLOCR():
 			TO DO: Would altering the contrast of the image improve results?	
 		'''
 		
-		with open(self.dataFile, 'a', newline='') as fp:		
-			imgData = pytesseract.image_to_string(Image.open(self.path+img))
-			imgData = [s.strip() for s in imgData.splitlines()]
+		if '.JPG' in img:
+			with open(self.dataFile, 'a', newline='') as fp:		
+				imgData = pytesseract.image_to_string(Image.open(self.path+img))
+				imgData = [s.strip() for s in imgData.splitlines()]
 	
-			# Try to validate the text
-			imgData = self.validateText(imgData)
+				# Try to validate the text
+				imgData = self.validateText(imgData)
 	
-			# Prepend the image name to the data list
-			imgData.insert(0, img)
+				# Prepend the image name to the data list
+				imgData.insert(0, img)
 	
-			# Write the data to the CSV file
-			a = csv.writer(fp, delimiter=',')
-			a.writerows([imgData])
+				# Write the data to the CSV file
+				a = csv.writer(fp, delimiter=',')
+				a.writerows([imgData])
 		
 	def validateText(self, imgData):
 		# TO DO: Check that the output seems reasonable, and not garbage. Normalise where possible.
